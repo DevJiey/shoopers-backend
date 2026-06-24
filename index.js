@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-require('./connection');
+const connectDB = require('./connection');
 const verifyApiKey = require('./middleware/apiKey');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 const authRoutes = require('./routes/authRoutes');
@@ -16,6 +16,14 @@ const port = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
+app.use(async (req, res, next) => {
+    try {
+        await connectDB();
+        next();
+    } catch (err) {
+        next(err);
+    }
+});
 
 app.use('/auth', verifyApiKey, authRoutes);
 app.use('/products', verifyApiKey, productRoutes);
@@ -27,8 +35,11 @@ app.use(notFoundHandler);
 app.use(errorHandler);
 
 if (require.main === module) {
-    app.listen(port, () => {
+    connectDB().then(() => app.listen(port, () => {
         console.log(`Server is running on http://localhost:${port}`);
+    })).catch((err) => {
+        console.error('Failed to start server:', err);
+        process.exit(1);
     });
 }
 
